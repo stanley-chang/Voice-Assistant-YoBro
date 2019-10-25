@@ -1,5 +1,6 @@
 from tkinter import *
 from SpeechRecognition import *
+#test func
 def main():
     lang  = 'en'
     my_word = Speech2Text(lang)
