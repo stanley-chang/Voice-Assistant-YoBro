@@ -5,11 +5,12 @@ import os.path
 from googleapiclient.discovery import build
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
+import pytz
 
 # If modifying these scopes, delete the file token.pickle.
 SCOPES = ['https://www.googleapis.com/auth/calendar.readonly']
 
-def check_Credential():
+def get_events(date):
     """Shows basic usage of the Google Calendar API.
     Prints the start and name of the next 10 events on the user's calendar.
     """
@@ -33,25 +34,25 @@ def check_Credential():
             pickle.dump(creds, token)
 
     service = build('calendar', 'v3', credentials=creds)
-    return service
 
-def get_events(service, n_events):
+    # date must be in datetime.date format.
+    date_begin = datetime.datetime.combine(date, datetime.datetime.min.time())
+    date_end = datetime.datetime.combine(date, datetime.datetime.max.time())
+    
+    date_begin = date_begin.astimezone(pytz.UTC)
+    date_end = date_end.astimezone(pytz.UTC)
     # Call the Calendar API
-    now = datetime.datetime.utcnow().isoformat() + 'Z' # 'Z' indicates UTC time
-    print(f'Getting the upcoming {n_events} events')
-    events_result = service.events().list(calendarId='primary', timeMin=now,
-                                        maxResults=n_events, singleEvents=True,
+    events_result = service.events().list(calendarId='primary',
+                                        timeMin=date_begin.isoformat(),
+                                        timeMax=date_end.isoformat(),
+                                        singleEvents=True,
                                         orderBy='startTime').execute()
     events = events_result.get('items', [])
+    return events 
 
-    if not events:
-        print('No upcoming events found.')
+if __name__ == '__main__':
+    events = get_events(datetime.date.today())
     for event in events:
         start = event['start'].get('dateTime', event['start'].get('date'))
         print(start, event['summary'])
-    return
-
-if __name__ == '__main__':
-    my_service = check_Credential()
-    get_events(my_service, 5)
     # print((datetime.date.today()+ datetime.timedelta(days=3)).weekday())

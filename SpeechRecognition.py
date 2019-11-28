@@ -18,12 +18,14 @@ import requests
 from bs4 import BeautifulSoup
 import os
 import datetime
+from GoogleCalendar import get_events
+import pyttsx3
 
 class VoiceAssistant():
     #Class Variables
     MONTH_LIST = ["january", "february", "march", "april", "may", "june","july", "august", "september","october", "november", "december"]
     DAY_LIST = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
-    DATE_EXTENTIONS = ["rd", "th", "st", "nd"]
+    DATE_EXTENTIONS = ["st", "nd", "rd", "th"]
     
     def __init__(self, language='en'):
         self.language = language
@@ -37,7 +39,7 @@ class VoiceAssistant():
             audio = r.listen(source)
         try:
             self.my_word = r.recognize_google(audio,language=self.language)
-            self.speak(f"You just said: {self.my_word}."+'Is it correct?')
+            self.speak(f"You just said: {self.my_word}. "+'Is it correct?')
             print(self.my_word)
             #check_correctness(sentence)
             return self.my_word
@@ -47,19 +49,27 @@ class VoiceAssistant():
         except sr.RequestError as e:
             self.speak(f"Could not request results from Google Speech Recognition service; {e}.")
 
+    # Woman Sound
+    # def speak(self, words):
+    #     with tempfile.NamedTemporaryFile(delete=True) as fp:
+    #         tts = gTTS(words, lang=self.language)
+    #         tts.save(f'{fp.name}.mp3')
+    #         mixer.init()
+    #         pygame.display.set_mode((200,100))
+    #         mixer.music.load(f'{fp.name}.mp3')
+    #         mixer.music.play(loops=0, start=0.0)
+    #         clock = pygame.time.Clock()
+    #         clock.tick(10)
+    #         while pygame.mixer.music.get_busy():
+    #             pygame.event.poll()
+    #             clock.tick(10)
+    #     return
+    
+    # Men Sound
     def speak(self, words):
-        with tempfile.NamedTemporaryFile(delete=True) as fp:
-            tts = gTTS(words, lang=self.language)
-            tts.save(f'{fp.name}.mp3')
-            mixer.init()
-            pygame.display.set_mode((200,100))
-            mixer.music.load(f'{fp.name}.mp3')
-            mixer.music.play(loops=0, start=0.0)
-            clock = pygame.time.Clock()
-            clock.tick(10)
-            while pygame.mixer.music.get_busy():
-                pygame.event.poll()
-                clock.tick(10)
+        engine = pyttsx3.init()
+        engine.say(words)
+        engine.runAndWait()
         return
 
     # def check_correctness(self, sentence):
@@ -139,6 +149,26 @@ class VoiceAssistant():
 
         # Default : return the event tomorrow
         return today + datetime.timedelta(days=1)
+    
+    def SpeakEvents(self, events, date):
+        month, day = date.month, str(date.day)
+        month = self.MONTH_LIST[month-1]
+
+        ext = int(day[-1])
+        if ext == 1:
+            ext = self.DATE_EXTENTIONS[0]
+        elif ext == 2:
+            ext = self.DATE_EXTENTIONS[1]
+        elif ext == 3:
+            ext = self.DATE_EXTENTIONS[2]
+        else:
+            ext = self.DATE_EXTENTIONS[3]
+
+        if not events:
+            self.speak(f'No upcoming events are found on {month} {day}{ext}.')
+        else:
+            self.speak(f"You have {len(events)} events on {month} {day}{ext}.")
+        return
         
         
                 
@@ -148,6 +178,10 @@ if __name__ == "__main__":
     YoBro = VoiceAssistant()
     my_word = YoBro.Speech2Text()
     date_in_sentence = YoBro.extract_date_from_sentence(my_word)
+    events = get_events(date_in_sentence)
+    for event in events:
+        print(event)
+    YoBro.SpeakEvents(events, date_in_sentence)
     print(date_in_sentence)
     # play_music_on_Youtube(my_word)
     # webbrowser.open(f'https://www.youtube.com/results?search_query={my_song}', new=2)
