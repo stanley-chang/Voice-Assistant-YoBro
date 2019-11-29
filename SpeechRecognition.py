@@ -168,9 +168,28 @@ class VoiceAssistant():
             self.speak(f'No upcoming events are found on {month} {day}{ext}.')
         else:
             self.speak(f"You have {len(events)} events on {month} {day}{ext}.")
+
+            for event in events:
+                # Transform from iso time format to sth like this -> '16:00:00+01:00' #
+                event_time = event['start']['dateTime'].split('T')[1]
+                event_name = event['summary']
+                if int(event_time.split(':')[0]) < 12 :
+                    if event_time.split(':')[1] == '00':
+                        event_time = event_time.split(':')[0] + 'am'
+                    else:
+                        event_time = ':'.join(event_time.split(':')[:2]) + 'am'
+                else:
+                    # Transfrom from 24hr format to 12 hr format
+                    if int(event_time.split(':')[0]) > 12 :
+                        old_hr = event_time.split(':')[0]
+                        event_time = event_time.replace(old_hr,str(int(old_hr)-12),1)
+                    if event_time.split(':')[1] == '00':
+                        event_time = event_time.split(':')[0] + 'pm'
+                    else:
+                        event_time = ':'.join(event_time.split(':')[:2]) + 'pm'
+                print(event_name +' at ' + event_time+'.')
+                self.speak(event_name +' at ' + event_time+'.')
         return
-        
-        
                 
 
 
@@ -178,11 +197,9 @@ if __name__ == "__main__":
     YoBro = VoiceAssistant()
     my_word = YoBro.Speech2Text()
     date_in_sentence = YoBro.extract_date_from_sentence(my_word)
-    events = get_events(date_in_sentence)
-    for event in events:
-        print(event)
-    YoBro.SpeakEvents(events, date_in_sentence)
     print(date_in_sentence)
+    events = get_events(date_in_sentence)
+    YoBro.SpeakEvents(events, date_in_sentence)
     # play_music_on_Youtube(my_word)
     # webbrowser.open(f'https://www.youtube.com/results?search_query={my_song}', new=2)
     # browser = webdriver.Safari()
