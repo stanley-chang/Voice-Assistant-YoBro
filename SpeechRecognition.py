@@ -18,10 +18,16 @@ import requests
 from bs4 import BeautifulSoup
 import os
 import datetime
-from GoogleCalendar import get_events
+from GoogleCalendar import get_cred, get_events, add_event
 import pyttsx3
+import subprocess
 
 class VoiceAssistant():
+    '''
+    Func1 : Play music on Youtube.
+    Func2 : Speak events on specific date.
+    Func3 : Add event on specific date.
+    '''
     #Class Variables
     MONTH_LIST = ["january", "february", "march", "april", "may", "june","july", "august", "september","october", "november", "december"]
     DAY_LIST = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
@@ -35,19 +41,25 @@ class VoiceAssistant():
     def Speech2Text(self):
         r = sr.Recognizer()   #Speech recognition
         with sr.Microphone() as source:
-            self.speak("Now you can say something!")
-            audio = r.listen(source)
+            self.speak("What can I do for you?")
+            try:
+                audio = r.listen(source,timeout=5)
+            except sr.WaitTimeoutError:
+                pass
         try:
             self.my_word = r.recognize_google(audio,language=self.language)
-            self.speak(f"You just said: {self.my_word}. "+'Is it correct?')
+            self.speak(f"You just said: {self.my_word}.")
             print(self.my_word)
             #check_correctness(sentence)
             return self.my_word
-        except sr.UnknownValueError:
-            self.speak("Google Speech Recognition could not understand your words. Let's try again.")
-            self.Speech2Text()
-        except sr.RequestError as e:
-            self.speak(f"Could not request results from Google Speech Recognition service; {e}.")
+        except:
+            self.my_word = ""
+            return self.my_word
+        # except sr.UnknownValueError:
+        #     self.speak("Google Speech Recognition could not understand your words. Let's try again.")
+        #     self.Speech2Text()
+        # except sr.RequestError as e:
+        #     self.speak(f"Could not request results from Google Speech Recognition service; {e}.")
 
     # Woman Sound
     # def speak(self, words):
@@ -78,7 +90,7 @@ class VoiceAssistant():
     #     if my_answer == 'yes it is':
     #         pass
 
-    def play_music_on_Youtube(self):
+    def play_music_on_Youtube(self, my_word):
         '''
         Please say "Play {Name of the Song} on Youtube."
         '''
@@ -190,17 +202,54 @@ class VoiceAssistant():
                 print(event_name +' at ' + event_time+'.')
                 self.speak(event_name +' at ' + event_time+'.')
         return
-                
-
+    
+    def extract_EventName_from_sentence(self,sentence):
+        '''
+        sentence: "Please add (event_name) on my calendar on (date)"
+        '''
+        start = 11
+        temp = sentence.find('calendar')
+        end = sentence[:temp].find('on')-1
+        return sentence[start:end]
 
 if __name__ == "__main__":
     YoBro = VoiceAssistant()
-    my_word = YoBro.Speech2Text()
-    date_in_sentence = YoBro.extract_date_from_sentence(my_word)
-    print(date_in_sentence)
-    events = get_events(date_in_sentence)
-    YoBro.SpeakEvents(events, date_in_sentence)
-    # play_music_on_Youtube(my_word)
-    # webbrowser.open(f'https://www.youtube.com/results?search_query={my_song}', new=2)
-    # browser = webdriver.Safari()
+    Wake_up = "yo"
+    Music_Keywords = ['i want to listen to music', 'play some music', 'time for music']
+    Speak_events_Keywords = ['what do i have', 'show my calendar']
+    Add_event_Keywords = ['add event', 'add event on my calendar']
+    Done = 'YoBro has done what you asked YoBro to do.'
+    service = get_cred()
 
+    while True:
+        my_word = YoBro.Speech2Text().lower()
+        if my_word.count(Wake_up) >= 1:
+            YoBro.speak('What do you want?')
+            my_word = YoBro.Speech2Text().lower()
+            for keyword in Music_Keywords:
+                if keyword in my_word:
+                    my_word = YoBro.Speech2Text()
+                    # Say "play (music name) on Youtube"
+                    YoBro.play_music_on_Youtube(my_word)
+                    YoBro.speak(Done)
+
+            for keyword in Speak_events_Keywords:
+                if keyword in my_word:
+                    my_word = YoBro.Speech2Text()
+                    # Say "what doi have on/next (date)"
+                    date_in_sentence = YoBro.extract_date_from_sentence(my_word)
+                    events = get_events(service, date_in_sentence)
+                    YoBro.SpeakEvents(events, date_in_sentence)
+                    YoBro.speak(Done)
+            
+            for keyword in Add_event_Keywords:
+                if keyword in my_word:
+                    my_word = YoBro.Speech2Text()
+                    # Say "Please add (event_name) on my calendar on (date)"
+                    date_in_sentence = YoBro.extract_date_from_sentence(my_word)
+                    event_name = YoBro.extract_EventName_from_sentence(my_word)
+                    add_event(service, date_in_sentence, event_name)
+                    YoBro.speak(Done)
+            YoBro.speak('End of loop')
+        if my_word.count('stop') >= 1:
+            break

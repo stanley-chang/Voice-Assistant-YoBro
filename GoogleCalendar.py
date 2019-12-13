@@ -8,9 +8,10 @@ from google.auth.transport.requests import Request
 import pytz
 
 # If modifying these scopes, delete the file token.pickle.
-SCOPES = ['https://www.googleapis.com/auth/calendar.readonly']
+# This scope allows read and write.
+SCOPES = 'https://www.googleapis.com/auth/calendar'
 
-def get_events(date):
+def get_cred():
     """Shows basic usage of the Google Calendar API.
     Prints the start and name of the next 10 events on the user's calendar.
     """
@@ -34,7 +35,9 @@ def get_events(date):
             pickle.dump(creds, token)
 
     service = build('calendar', 'v3', credentials=creds)
+    return service
 
+def get_events(service, date):
     # date must be in datetime.date format.
     date_begin = datetime.datetime.combine(date, datetime.datetime.min.time())
     date_end = datetime.datetime.combine(date, datetime.datetime.max.time())
@@ -48,11 +51,31 @@ def get_events(date):
                                         singleEvents=True,
                                         orderBy='startTime').execute()
     events = events_result.get('items', [])
-    return events 
+    return events
+
+def add_event(service, date, event_name):
+    date = date.strftime("%Y-%m-%d")
+    event = {
+    'summary': event_name,
+    'start': {
+        'date': date
+    },
+    'end': {
+        'date': date
+    }
+    }
+    # calendarId='primary' refers to the primary calendar of the logged in user
+    event = service.events().insert(calendarId='primary', body=event).execute()
+    print('Event created: %s' % (event.get('htmlLink')))
+    return
 
 if __name__ == '__main__':
-    events = get_events(datetime.date.today())
+    today  = datetime.date.today()
+    event_name = 'Have fun'
+
+    service = get_cred()
+    add_event(service, today, event_name)
+    events= get_events(service, today)
     for event in events:
         start = event['start'].get('dateTime', event['start'].get('date'))
         print(start, event['summary'])
-    # print((datetime.date.today()+ datetime.timedelta(days=3)).weekday())
